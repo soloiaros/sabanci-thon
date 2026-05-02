@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import './PatientOverview.css'
+import { applyExpertRules } from '../rules/expertSystem'
 
 const GENETIC_OPTIONS = ['APOE ε4 Negative', 'APOE ε4 Heterozygous', 'APOE ε4 Homozygous', 'BRCA1 Mutation', 'BRCA2 Mutation', 'TP53 Mutation']
 const CANCER_OPTIONS  = ['None', 'Breast Cancer', 'Lung Cancer', 'Prostate Cancer', 'Colorectal Cancer', 'Skin Cancer', 'Leukemia']
@@ -163,7 +164,8 @@ export default function PatientOverview({ patient, onUpdate, analysisMode, setAn
         setError(data.error || data.detail || `Server error ${res.status}`)
         return
       }
-      onUpdate({ ...patient, mri_results: data })
+      const bipartiteData = applyExpertRules(patient, data)
+      onUpdate({ ...patient, mri_results: bipartiteData })
     } catch (err) {
       setError(`Network error: ${err.message}`)
     } finally {
@@ -175,7 +177,8 @@ export default function PatientOverview({ patient, onUpdate, analysisMode, setAn
 
   const sendChat = async () => {
     const msg = chatInput.trim()
-    const results = patient.mri_results
+    const resultsData = patient.mri_results
+    const results = resultsData?.is_bipartite ? resultsData.adjusted : resultsData
     if (!msg || !results || chatBusy) return
     setChatInput('')
     setChatLog(l => [...l, { role: 'user', content: msg }])
@@ -204,7 +207,8 @@ export default function PatientOverview({ patient, onUpdate, analysisMode, setAn
   }
 
   const imageUrl   = patient.image_url   || null
-  const mriResults = patient.mri_results || null
+  const mriResultsData = patient.mri_results || null
+  const mriResults = mriResultsData?.is_bipartite ? mriResultsData.adjusted : mriResultsData
   const hasResults = mriResults && !mriResults.error
 
   const geneticOptions = analysisMode === 'tumor' 
